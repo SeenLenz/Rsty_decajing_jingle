@@ -1,74 +1,199 @@
-1918-1921 Hadi kommunizmus
+use std::io;
+use std::mem::drop;
+use std::io::Write;
+use std::fs::{self, DirEntry, ReadDir};
+use std::ffi::{OsStr,OsString};
+use std::os::windows::prelude::*;
+use std::path::PathBuf;
+
+//========================================= Audio parsing ===========================================
+#[allow(dead_code)]
+fn folder_to_list(dir_to_path: Vec<PathBuf>, mut result_vec: Vec<Needed>, ) -> std::io::Result<Vec<Needed>> {
+
+    let sup_files: [&str; 3] = ["mp3","wav","ogg"];
+
+    for dir in dir_to_path{
+
+        let dir_struct = fs::read_dir(dir).unwrap();
+
+        for entrie in dir_struct{
+
+            let entrie = entrie?;
+
+            if entrie.metadata()?.is_dir() == false{
+
+                for i in sup_files{
+
+                    if  entrie.path().extension().unwrap() == i {
+
+                        println!("{:?}", entrie.file_name());
+                        let thing = Needed::new( 
+                        entrie.metadata()?.file_size(), 
+                        entrie.file_name(), 
+                        entrie.path().extension().unwrap(), 
+                        entrie.path());
+
+                        result_vec.push(thing);
+                    }
+                }
+            }
+        }
+    }
+
+    return Ok(result_vec);
+}
+
+fn get_folders() -> io::Result<Vec<ReadDir>>{
+    let mut folders: Vec<ReadDir> = Vec::new();
+    let mut paths: Vec<String> = Vec::new();
+    let mut input: String = String::new();
+
+    loop {
+
+      print!("Please input a path to your music folder: ");
+      io::stdout().flush()?;
+      io::stdin().read_line(&mut input)?;
+
+      if fs::metadata(&input)?.is_dir() {
+
+        paths.push(input);
+        print!("Would you like to input another path?[Y/N]: ");
+        io::stdout().flush()?;
+        io::stdin().read_line(&mut input)?;
+        if input.to_uppercase() == "N"{
+        
+            for path in paths{
+               folders.push(fs::read_dir(path)?)
+            }
+          println!("All path's have been added sucessfully");
+          break;
+          
+        } else if input.to_uppercase() == "Y"{
+
+          continue;
+          
+        } else {
+
+        print!("Invalid Input, please try again. ");
+        continue;
+            
+        }
+
+      } else {
+
+        print!("Invalid path, please retry");
+        continue;
+        
+      }
+    }
+    return Ok(folders);
+}
+
+#[allow(dead_code)]
+fn type_of<T>(_: &T) {
+    println!("{}", std::any::type_name::<T>())
+}
+
+#[derive(Debug)]
+pub struct Needed {
+
+    _size: u64,
+    _name: OsString,
+    _type: OsString,
+    _path: PathBuf,
+
+}
+
+impl Needed{
+    pub fn new(_size: u64, _name: OsString, _type: &OsStr, _path: PathBuf,) -> Self{
+        Self{
+            _size: _size,
+            _name: _name,
+            _type: _type.to_os_string(),
+            _path: _path,
+        }
+    }
+}
+
+//=========================================== File Input =============================================
+fn main() -> io::Result<()> {
     
-    Gazdaság
-    A kis és középüzemeket államosították
-    Kötelező beszolgáltatás a mezőgazdaságban
-    Az élelmiszerek elosztása központi volt
-    Áru és pénzviszonyok megszűnnek
-    1921 Konstadt matróz lázadás -> leverik őket
-    1921-29 NEP, új gazdaságpolitika
-    Lenin intézkedései:
-        Megszünteti a kötelező beszolgáltatást
-        javítja az élelmiszerellátást
-        újraindítja a kis és középüzemeket
-        Külföldi tőkét engedett be
+    
 
-Szovjetunió megalakulása
+    return Ok(());
+}
 
-    1917-től alakultak szovjetköztársaságok
-    független államok önkéntes szövetsége
-    Sztálin a nemzetiségi népbiztos
-    A kaukázusi álamok nem akarják a szövetséget
-    1922 Megalakul a Szovjetunió
-    1924 ideglenes alkotmány
-        egyenjogú népek önkéntes szövetsége
-        nincs kötelező államnyelv
-    Lenin elképzelései:
-        erős nehézipar
-        villamosítási program, vízerőművek építése
-    Két nagyüzleti modell:
-        állami gazdaság -> szovhoz
-        termelőszövetkezet -> kolhoz
 
-Sztálin karrierje
 
-    Nemzetiségi népbiztos volt
-    1922-től a szovjet Kommunista párt főtitkára
-        nem akar nagy hatalmat
-        Hatalmi központot épített fel
-        Besúgóhálózatot épített ki
-    1924-ben Lenin halála után Sztálin lesz a miniszterelnök
-    Mindenhova a saját embereit rakta, lenin embereit ki akarta zárni a hatalomból
-    A NEP-et meghagyta
-    1925-27 Első tisztogatás
-        Frunze hadügyminisztert kiiktatják, hejette Vorosilov lesz
-        Trozkij elvtást is kiiktatják (kizárás a pártból, házi őrizet, szibériai száműzetés)
-        Zsinovjev, Kamenyev szövetségre lép Sztálinnal
+========================================= Audio playback ===========================================
+use std::fs::File;
+use std::io::BufReader;
+use rodio::{Decoder, OutputStream, source::Source};
 
-Gazdaság
+fn main() {
 
-    1925-ben visszatér az ipar au eredeti állapotába (1913-as szint)
-    A NEP bevált
-    Vizierőművek épültek, iparvárosok jöttek létre
-    1928-tól A megőgazdaság átalakítása
-    TSZ-ek létrehozása -> minden közös (föld, gép, állat)
-    kulák -> nem akar belépni a Tsz-be -> nagy bírságot kaptak
-    gulag-ok létrehozása, ide hozzák a kulákokat
-    NKVD felügyelte a gulágokat, belbiztonsági alakulat voltak
-    1932-33 Éhínség ukránjában (1-3 millió ember halt meg)
+    // Get a output stream handle to the default physical sound device
+    let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+    // Load a sound from a file, using a path relative to Cargo.toml
+    let file = BufReader::new(File::open("src/practice.mp3").unwrap());
+    // Decode that sound file into a source
+    let source = Decoder::new(file).unwrap();
+    // Play the sound directly on the device
+    stream_handle.play_raw(source.convert_samples());
 
-Sztálin félreállítása (kísérlet)
+    // The sound plays in a separate audio thread,
+    // so we need to keep the main thread alive while it's playing.
+    std::thread::sleep(std::time::Duration::from_secs(10));
 
-    A párttitkári címről le akarták beszélni, helyére Kirov-ot akarták
-    Sztálin megtartotta volna a miniszterelnöki címet
-    17. párti kongresszus összehívása
-    Sztálin meghamisította a szavazatokat, ezért ő marad, aki ellene szavazott az eltávolították
-    1943-37 második nagy tisztigatás -> Vorosilov, NKVO hajtotta végre
-        Sok koncepciós per
-        Zsinovjev, Kamenyev is áldozat lesz
-        A hadsereget is eléri (tábornokok, főtisztek) helyükre fiatal, tapasztalatlan, megbízható embereket tett
-    Új alkotmány:
-        Buharin írta, akit később Sztálin megölt
-        nemzetiségvédelem
-        parasztok jogainak bővítése
-    személyi kultusz alakul ki Sztálin köré, a 30-as évekre
+}
+
+=========================================    Archive    ===========================================
+fn main() -> io::Result<()> {
+    
+    print!("Please input a path to your music folder: ");
+    io::stdout().flush()?;
+
+    let mut input = String::new();
+    let mut folders: Vec<String> = Vec::new();
+    io::stdin().read_line(&mut input)?;
+    folders.push(input);
+
+    loop {
+        let mut countinue = String::new();
+
+        print!("would you like to input another path?[Y/N]: ");
+        io::stdout().flush()?;
+
+        io::stdin().read_line(&mut countinue).unwrap();
+
+        if countinue.trim().to_lowercase().eq("no") || countinue.trim().to_lowercase().eq("n"){
+
+            break
+
+        } else {
+
+            let mut input = String::new();
+
+            print!("Please input a path to your music folder: ");
+            io::stdout().flush()?;
+
+            match io::stdin().read_line(&mut input) {
+
+                Err(e) => panic!("Error: {}",e),
+                Ok(_) => {folders.push(input)}
+        
+            }
+        }
+
+        drop(countinue);
+    }
+
+    println!("Your current folders are:");
+
+    for i in folders{
+
+        println!("{}",i);
+    }
+    return Ok(());
+}
+
