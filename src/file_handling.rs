@@ -1,4 +1,3 @@
-
 use std::fmt;
 use std::io;
 use std::mem::drop;
@@ -8,30 +7,33 @@ use std::ffi::{OsStr,OsString};
 use std::os::windows::prelude::*;
 use std::path::PathBuf;
 
+
 pub fn parse_folder(dirs: Vec<ReadDir>, result_vec: &mut Vec<Needed>, ) -> io::Result<()> {
     let sup_files: [&str; 3] = ["mp3","wav","ogg"];
 
-
     for dir in dirs{
-
         for entrie in dir{
-
             let entrie = entrie?;
-
             if entrie.metadata()?.is_dir() == false{
-
                 for i in sup_files{
+                    match entrie.path().extension() {
+                        Some(value) => {
+                            if value == i {
+                                
+                                let thing = Needed::new( 
+                                entrie.metadata()?.file_size(), 
+                                entrie.file_name(), 
+                                entrie.path().extension().expect("number two panicked"), 
+                                entrie.path());
+                                
+                                result_vec.push(thing);
+                            }
+                        }
 
-                    if  entrie.path().extension().unwrap() == i {
-
-                        println!("{:?}", entrie.file_name());
-                        let thing = Needed::new( 
-                        entrie.metadata()?.file_size(), 
-                        entrie.file_name(), 
-                        entrie.path().extension().unwrap(), 
-                        entrie.path());
-
-                        result_vec.push(thing);
+                        None => {
+                            println!("The file type could not be determined");
+                            continue;
+                        }
                     }
                 }
             }
@@ -69,10 +71,10 @@ pub fn type_of<T>(_: &T) {
 
 #[derive(Debug)]
 pub struct Needed {
-    _size: u64,
-    _name: OsString,
-    _type: OsString,
-    _path: PathBuf,
+    pub _size: u64,
+    pub _name: OsString,
+    pub _type: OsString,
+    pub _path: PathBuf,
 
 }
 
@@ -90,6 +92,10 @@ impl Needed{
 impl fmt::Display for Needed {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Customize so only `x` and `y` are denoted.
-        write!(f, "Size: {}\nName: {:?}\nType: {:?}\nPath: {:?}\n", self._size, self._name, self._type, self._path)
+        write!(f, "Size: {}\nName: {:?}\nType: {:?}\nPath: {:?}\n", 
+                   self._size, 
+                   self._name, 
+                   self._type, 
+                   self._path)
     }
 }
