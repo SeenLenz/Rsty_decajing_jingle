@@ -44,13 +44,12 @@ pub fn parse_folder(dirs: Vec<ReadDir>, result_vec: &mut Vec<Needed>, ) -> io::R
 }
 
 pub fn get_folders() -> io::Result<ReadDir>{
-    
-
     loop {
         let mut input: String = String::new();
         print!("Please input a path to your music folder: ");
         io::stdout().flush()?;
         io::stdin().read_line(&mut input)?;
+
 
         match fs::read_dir(&input.trim()) {
             Err(error) => {
