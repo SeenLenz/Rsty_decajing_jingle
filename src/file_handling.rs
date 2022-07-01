@@ -4,7 +4,6 @@ use std::mem::drop;
 use std::io::Write;
 use std::fs::{self, ReadDir};
 use std::ffi::{OsStr,OsString};
-use std::os::windows::prelude::*;
 use std::path::PathBuf;
 
 
@@ -20,8 +19,7 @@ pub fn parse_folder(dirs: Vec<ReadDir>, result_vec: &mut Vec<Needed>, ) -> io::R
                         Some(value) => {
                             if value == i {
                                 
-                                let thing = Needed::new( 
-                                entrie.metadata()?.file_size(), 
+                                let thing = Needed::new(
                                 entrie.file_name(), 
                                 entrie.path().extension().expect("number two panicked"), 
                                 entrie.path());
@@ -70,7 +68,6 @@ pub fn type_of<T>(_: &T) {
 
 #[derive(Debug)]
 pub struct Needed {
-    pub _size: u64,
     pub _name: OsString,
     pub _type: OsString,
     pub _path: PathBuf,
@@ -78,9 +75,8 @@ pub struct Needed {
 }
 
 impl Needed{
-    pub fn new(_size: u64, _name: OsString, _type: &OsStr, _path: PathBuf,) -> Self{
+    pub fn new(_name: OsString, _type: &OsStr, _path: PathBuf,) -> Self{
         Self{
-            _size: _size,
             _name: _name,
             _type: _type.to_os_string(),
             _path: _path,
@@ -91,8 +87,7 @@ impl Needed{
 impl fmt::Display for Needed {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Customize so only `x` and `y` are denoted.
-        write!(f, "Size: {}\nName: {:?}\nType: {:?}\nPath: {:?}\n", 
-                   self._size, 
+        write!(f, "Name: {:?}\nType: {:?}\nPath: {:?}\n",  
                    self._name, 
                    self._type, 
                    self._path)
