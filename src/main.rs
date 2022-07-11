@@ -50,7 +50,7 @@ fn sql_init(connection: &Connection) -> Result<()> {
 
 fn sql_add_song(connection: &Connection, args: (i32, &str, &str, &str, &str, &str, i32, i32,)) -> Result<()> {
 
-    let temp:String = format!("INSERT INTO songs VALUES({},{},{},{},{},{},{}, playlists.id LIMIT 1)", args.0, args.1, args.2, args.3, args.4, args.5, args.6);
+    let temp:String = format!("INSERT INTO songs VALUES({},{},{},{},{},{},{},{})", args.0, args.1, args.2, args.3, args.4, args.5, args.6, args.7);
     let query = &temp[..]; 
     connection.execute( query,NO_PARAMS)?;
 
