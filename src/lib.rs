@@ -299,6 +299,7 @@ pub mod d_main {
 }
 
 mod database_handling {
+
     #[derive(Debug)]
 struct Playlist {
     id: i32,
@@ -432,6 +433,13 @@ fn sql_query_song(connection: &Connection, id: i32) -> Result<(), rusqlite::Erro
 
     return Ok(())
 }
+
+// let conn = Connection::open("./database/rsty_jingle.db").expect("failed to initialise the database");
+// sql_init(&conn);
+// sql_add_song(&conn,(1, "path", "img_path", "name", "duration", "date_added", 0, 1));
+// sql_create_playlist(&conn,(2, "img_path", "name", 0, 0, "creation_date"));
+// println!("{:?}",sql_query_playlist(&conn, 1));
+// println!("{:?}",sql_query_song(&conn, 1));
 
 
 }

@@ -13,21 +13,46 @@
 // const IMAGE_SIZE: Vec2 = Vec2::new(100.,100.);
 #![allow(unused)]
 
-#[derive(Debug)]
-struct Playlist {
-    id: i32,
-    img_path: String,
-    name: String,
-    clicks: i32,
-    liked: i32,
-    date_created: String,
+use std::fmt::format;
+
+use egui_extras::image::RetainedImage;
+use eframe::{
+    egui,
+    run_native,
+    NativeOptions,
+    egui::{}, 
+    App, 
+    egui::{TopBottomPanel, 
+        SidePanel, 
+        style::Visuals, 
+        ScrollArea, 
+        Layout, 
+        Resize, 
+        CentralPanel, 
+        LayerId, 
+        Ui,
+        Align}, epaint::tessellator::path
+};
+use music_player::gui;
+
+mod lib;
+
+
+
+fn main(){
+    let app = gui::RstyJingle::new();
+    let win_options = NativeOptions {
+        initial_window_size: Some(egui::vec2(960.0, 960.0)),
+        ..Default::default()
+    };
+    run_native("rsty_jingle", win_options, Box::new(|cc| Box::new(RstyJingle::new())));
 }
 
-#[derive(Debug)]
-struct Song {
+const PADDING: f32 = 50.;
+pub struct SongCard {
     id: i32,
+    img: RetainedImage,
     path: String,
-    img_path:String,
     name: String,
     duration: String,
     date_added: String,
@@ -35,128 +60,208 @@ struct Song {
     favourite: i32,
 }
 
-use rusqlite::{Connection, Result, params, Statement};
-use rusqlite::NO_PARAMS;
+#[derive(Default)]
 
-fn sql_init(connection: &Connection) -> Result<()> {
+pub struct RstyConfig{
+    dark_mode: bool,
+    main_page: bool,
+}
 
-    connection.execute("
-    CREATE TABLE IF NOT EXISTS playlists (
-        id INTEGER PRIMARY KEY,
-        img_path TEXT,
-        name TEXT,
-        clicks INTEGER,
-        liked INTEGER,
-        date_created TEXT
-    )", NO_PARAMS).expect("creation of playlists failed");
+pub struct RstyJingle{
+    songs: Vec<SongCard>,
+    cfg: RstyConfig,
+}
+
+impl RstyConfig {
+    fn default() -> Self{
+        RstyConfig{
+            dark_mode: true,
+            main_page: true,
+        }
+    }
+}
+
+// RetainedImage::from_image_bytes("1.png",include_bytes!("1.png")).unwrap()
+impl RstyJingle {
+
+    pub fn new() -> RstyJingle{
+
+        let iter =(0..20).map(|a| SongCard{
+            id: a,
+            img: RetainedImage::from_image_bytes("1.png",include_bytes!("1.png")).unwrap(),
+            path: "./path/to_the/song".to_string(),
+            name: format!("name of song {}",a),
+            duration: format!("{}:{}{}",a,a,a),
+            date_added: format!("2022.7.{}",a),
+            clicks: 0,
+            favourite: 0,
+        });
+
+        RstyJingle {
+            songs:Vec::from_iter(iter),
+            cfg: RstyConfig::default()
+        }
+    }
+}
+
+
+impl App for RstyJingle {
+
+    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        if self.cfg.dark_mode {
+            ctx.set_visuals(Visuals::dark());
+        } else {
+            ctx.set_visuals(Visuals::light());
+        };
+
+        render_main(self, ctx);
     
-    connection.execute("
-    INSERT INTO playlists VALUES(1,'./resources/favourites.png','favourites',0,0,'2022.07.11')
-    ", NO_PARAMS).expect("creation of favourites failed");
+    fn load_image_from_path(path: &std::path::Path) -> Result<egui::ColorImage, image::ImageError> {
+        let image = image::io::Reader::open(path)?.decode()?;
+        let size = [image.width() as _, image.height() as _];
+        let image_buffer = image.to_rgba8();
+        let pixels = image_buffer.as_flat_samples();
+        Ok(egui::ColorImage::from_rgba_unmultiplied(
+            size,
+            pixels.as_slice(),
+        ))
+    }
 
-    connection.execute("
-    CREATE TABLE IF NOT EXISTS songs (
-        id INTEGER PRIMARY KEY,
-        path TEXT,
-        img_path TEXT,
-        name TEXT,
-        duration TEXT,
-        date_added TEXT,
-        clicks INTEGER,
-        favourite INTEGER,
-        FOREIGN KEY(favourite) REFERENCES playlists(id)
-    )", NO_PARAMS).expect("creation of songs failed");
+        
 
-    return Ok(())
+
+    fn render_main(main: &mut RstyJingle,ctx: &egui::Context){
+        
+        TopBottomPanel::bottom("navbar")
+        .min_height(100.0)
+        .max_height(150.0)
+        .show(ctx, |ui| {
+
+            ui.label("Player");
+            ui.with_layout(Layout::bottom_up(Align::Center), |ui|{
+                ui.add_space(15.0);
+                ui.add(egui::ProgressBar::new(100.0).desired_width(ui.available_width() / 2.))
+            });
+        });
+
+        SidePanel::left("Options")
+        .resizable(false)
+        .min_width(200.0)
+        .show(ctx,|ui|{
+
+            ui.label("Options/search");
+            let theme_changer = ui.add(egui::Button::new("🌙"));
+            let page_changer = ui.add(egui::Button::new("🎵"));
+            if theme_changer.clicked(){
+                main.cfg.dark_mode = !main.cfg.dark_mode;
+            }
+            if page_changer.clicked(){
+                main.cfg.main_page = !main.cfg.main_page;
+            }
+
+        });
+
+        let song = RetainedImage::from_image_bytes("1.png",include_bytes!("1.png")).unwrap();
+
+        if main.cfg.main_page {
+
+            CentralPanel::default().show(ctx, |ui|{
+
+                ScrollArea::vertical().auto_shrink([false,false]).show(ui, |ui|{
+                    egui::Grid::new("somadse_unique_id")
+                    .num_columns(1)
+                    .spacing([40.0, 4.0])
+                    .min_col_width(ui.available_width())
+                    .min_row_height(80.)
+                    .striped(true)
+                    .show(ui, |ui|{
+                        for i in 1..20{
+                                ui.horizontal(|ui|{
+                                ui.label("Thing");
+                                ui.label("Thing");
+                                ui.label("Thing")
+                            });
+                            ui.end_row();
+                        };
+                        });
+                    });
+                });
+
+        } else {
+
+            CentralPanel::default().show(ctx, |ui|{
+
+                ui.label("something else");
+                
+            });  
+        };
+    }
+
+    fn render_SongCard(ui: &mut Ui, song: &SongCard){
+        song.img.show(ui);
+        ui.label("Thing");
+        ui.end_row();
+    }
+
+    }
+
+    fn on_exit_event(&mut self) -> bool {
+        true
+    }
+
+    fn on_exit(&mut self, _gl: &eframe::glow::Context) {}
 }
 
-fn sql_add_song(connection: &Connection, args: (i32, &str, &str, &str, &str, &str, i32, i32,)) -> Result<()> {
+// ScrollArea::vertical().auto_shrink([false,false]).show(ui, |ui|{
 
-    connection.execute( "INSERT INTO songs VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-    params![args.0, args.1, args.2, args.3, args.4, args.5, args.6, args.7])?;
+//     egui::Grid::new("some_unique_id")
+//     .num_columns(1)
+//     .spacing([40.0, 4.0])
+//     .striped(true)
+//     .show(ui, |ui|{
 
-    return Ok(())
-}
+//         ui.label("this one is the first row aka row number one aka 1");
+//         ui.end_row();
 
-fn sql_create_playlist(connection: &Connection, args: (i32, &str, &str, i32, i32, &str)) -> Result<()> {
+//         ui.label("this one is the first row aka row number one aka 2");
+//         ui.end_row();
 
-    connection.execute( "INSERT INTO playlists VALUES(?1, ?2, ?3, ?4, ?5, ?6)",
-    params![args.0, args.1, args.2, args.3, args.4, args.5])?;
-    return Ok(())
-}
+//         ui.label("this one is the first row aka row number one aka 3");
+//         ui.end_row();
 
-fn sql_query_playlist(connection: &Connection, id: i32) -> Result<(), rusqlite::Error> {
+//         ui.label("this one is the first row aka row number one aka 4");
+//         ui.end_row();
 
-    let data = Playlist{
-        id: 0,
-        img_path: "/default/path".to_string(),
-        name: "test_playlist".to_string(),
-        clicks: 0,
-        liked: 0,
-        date_created: "2022.07.12 09:39".to_string(), 
-    };
-    let mut stmt = connection.prepare("SELECT * FROM playlists WHERE id = ?1")?;
-    let playlist_iter = stmt.query_map([id], |r|{
-        Ok( Playlist {
-            id: r.get(0)?,
-            img_path: r.get(1)?,
-            name: r.get(2)?,
-            clicks: r.get(3)?,
-            liked: r.get(4)?,
-            date_created: r.get(5)?,
-        })
-    })?;
+//         ui.label("this one is the first row aka row number one aka 5");
+//         ui.end_row();
 
-    for row in playlist_iter{
-        println!("playlist retrieved with id of [{}]: {:?}", id, row?);
-    };
+//     });
 
-    return Ok(())
-}
+//     egui::Window::new("My Window").resizable(true)
+//     .default_width(280.0).show(ctx, |ui| {
+//         egui::Grid::new("somadse_unique_id")
+//     .num_columns(1)
+//     .spacing([40.0, 4.0])
+//     .striped(true)
+//     .show(ui, |ui|{
 
-fn sql_query_song(connection: &Connection, id: i32) -> Result<(), rusqlite::Error> {
+//         ui.label("this one is the first row aka row number one aka 1");
+//         ui.end_row();
 
-    let data = Song {
-        id: 0,
-        path: "".to_string(),
-        img_path: "".to_string(),
-        name: "".to_string(),
-        duration: "".to_string(),
-        date_added: "".to_string(),
-        clicks: 0,
-        favourite: 0,
-    };
-    let mut stmt = connection.prepare("SELECT * FROM songs WHERE id = ?1")?;
-    let playlist_iter = stmt.query_map([id], |r|{
-        Ok( Song {
-            id: r.get(0)?,
-            path: r.get(1)?,
-            img_path: r.get(2)?,
-            name: r.get(3)?,
-            duration: r.get(4)?,
-            date_added: r.get(5)?,
-            clicks: r.get(6)?,
-            favourite: r.get(7)?,
-        })
-    })?;
+//         ui.label("this one is the first row aka row number one aka 2");
+//         ui.end_row();
 
-    for row in playlist_iter{
-        println!("playlist retrieved with id of [{}]: {:?}", id, row?);
-    };
+//         ui.label("this one is the first row aka row number one aka 3");
+//         ui.end_row();
 
-    return Ok(())
-}
+//         ui.label("this one is the first row aka row number one aka 4");
+//         ui.end_row();
+
+//         ui.label("this one is the first row aka row number one aka 5");
+//         ui.end_row();
+
+//     });
+//     });
 
 
-fn main() -> Result<()>{
-
-    let conn = Connection::open("./database/rsty_jingle.db").expect("failed to initialise the database");
-
-    // sql_init(&conn);
-    // sql_add_song(&conn,(1, "path", "img_path", "name", "duration", "date_added", 0, 1));
-    // sql_create_playlist(&conn,(2, "img_path", "name", 0, 0, "creation_date"));
-    // println!("{:?}",sql_query_playlist(&conn, 1));
-    println!("{:?}",sql_query_song(&conn, 1));
-
-    return Ok(());
-}
+// });
