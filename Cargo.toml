@@ -6,10 +6,25 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+#used for the music playback
 rodio = "0.15.0"
+
+#used for the gui
 eframe = "0.18.0"
+
+#used for egui_extras::retained_image
 egui_extras = {path = "/home/lenz/.cargo/registry/src/github.com-1ecc6299db9ec823/egui_extras-0.18.0", features = ["image"] }
 image = { version = "0.24", default-features = false, features = ["png"] }
+
+#used to interact with the sql api
 rusqlite = { version = "0.27.0", features = ["bundled"] }
+
+#used to parse json files
 serde_json = "1.0"
 serde = { version = "1.0.139", features = ["derive"] }
+
+#used to retrieve the current date and time
+chrono = "0.4" 
+
+#used for the file dialogs
+rfd = "0.10.0"

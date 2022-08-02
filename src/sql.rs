@@ -3,7 +3,7 @@ use rusqlite::NO_PARAMS;
 use crate::gui::Song;
 use crate::gui::Playlist;
 
-fn sql_init(connection: &Connection) -> Result<()> {
+pub fn sql_init(connection: &Connection) -> Result<()> {
 
     connection.execute("
     CREATE TABLE IF NOT EXISTS playlists (
@@ -29,7 +29,7 @@ fn sql_init(connection: &Connection) -> Result<()> {
         date_added TEXT,
         clicks INTEGER,
         playlists TEXT,
-        FOREIGN KEY(favourite) REFERENCES playlists(id)
+        UNIQUE(path)
     )", NO_PARAMS).expect("creation of songs failed");
 
     return Ok(())
@@ -38,7 +38,7 @@ fn sql_init(connection: &Connection) -> Result<()> {
 fn sql_add_song(connection: &Connection, song: &Song) -> Result<()> {
 
     //https://stackoverflow.com/questions/57791985/how-to-append-to-existing-text-row-sqlite3
-    connection.execute( "INSERT INTO songs VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+    connection.execute( "INSERT OR IGNORE INTO songs VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
     params![
     song.id, 
     song.img_path, 

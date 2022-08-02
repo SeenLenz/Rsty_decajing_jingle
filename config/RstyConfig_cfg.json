@@ -1,1 +1,8 @@
-{"dark_mode":false,"main_page":true}
+{
+    "dark_mode": true,
+    "main_page": true,
+    "is_linux": true,
+    "is_simple": false,
+    "has_run": false,
+    "folders": []
+}
