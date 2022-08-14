@@ -36,7 +36,7 @@ pub struct RstyConfig{
     is_simple: bool,
     pub has_run: bool,
     folders: Vec<PathBuf>
-}use eframe::{run_native, NativeOptions, egui};
+}
 
 impl RstyConfig{
 
