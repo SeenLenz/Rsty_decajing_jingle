@@ -3,11 +3,12 @@ use rusqlite::NO_PARAMS;
 use crate::gui::Song;
 use crate::gui::Playlist;
 
-pub fn sql_init(connection: &Connection) -> Result<()> {
+pub fn sql_init() -> Result<()> {
+
+    let connection = Connection::open("./database/rsty_jingle.db").expect("fucked up connection to the database when initilaizing it");
 
     connection.execute("
     CREATE TABLE IF NOT EXISTS playlists (
-        id INTEGER PRIMARY KEY,
         img_path TEXT,
         name TEXT,
         clicks INTEGER,
@@ -16,16 +17,15 @@ pub fn sql_init(connection: &Connection) -> Result<()> {
     )", NO_PARAMS).expect("creation of playlists failed");
     
     connection.execute("
-    INSERT INTO playlists VALUES(1,'./resources/favourites.png','favourites',0,0,'2022.07.11')
+    INSERT INTO playlists VALUES('./resources/favourites.png','favourites',0,0,'2022.07.11')
     ", NO_PARAMS).expect("creation of favourites failed");
 
     connection.execute("
     CREATE TABLE IF NOT EXISTS songs (
-        id INTEGER PRIMARY KEY,
-        path TEXT,
         img_path TEXT,
+        path TEXT,
         name TEXT,
-        duration TEXT,
+        duration INTEGER,
         date_added TEXT,
         clicks INTEGER,
         playlists TEXT,
@@ -35,18 +35,21 @@ pub fn sql_init(connection: &Connection) -> Result<()> {
     return Ok(())
 }
 
-fn sql_add_song(connection: &Connection, song: &Song) -> Result<()> {
+pub fn sql_add_song(song: Song) -> Result<()> {
+    println!("called sql_add_song");
 
     //https://stackoverflow.com/questions/57791985/how-to-append-to-existing-text-row-sqlite3
-    connection.execute( "INSERT OR IGNORE INTO songs VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+    let connection = Connection::open("./database/rsty_jingle.db").expect("fucked up connection to the database when adding a song");
+    connection.execute( "INSERT INTO songs VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)",
     params![
-    song.id, 
-    song.img_path, 
-    song.path, 
-    song.name, 
-    song.duration, 
-    song.date_added, 
-    song.clicks, "1"])?;
+song.img_path, 
+song.path, 
+song.name, 
+song.duration, 
+song.date_added, 
+song.clicks, 
+song.playlists.join("")
+])?;
 
     return Ok(())
 }
@@ -76,10 +79,12 @@ fn sql_query_playlist(connection: &Connection, id: i32) -> Result<(), rusqlite::
     return Ok(())
 }
 
-fn sql_query_song(connection: &Connection, id: i32) -> Result<(), rusqlite::Error> {
+pub fn sql_query_song() -> Result<Vec<Song>, rusqlite::Error> {
 
-    let mut stmt = connection.prepare("SELECT * FROM songs WHERE id = ?1")?;
-    let playlist_iter = stmt.query_map([id], |r|{
+    let connection = Connection::open("./database/rsty_jingle.db").expect("fucked up connection to the database when adding a song");
+    let mut revec = Vec::new();
+    let mut stmt = connection.prepare("SELECT rowid,  * FROM songs WHERE id = ?1")?;
+    let playlist_iter = stmt.query_map([], |r|{
         Ok( Song {
             id: r.get(0)?,
             path: r.get(1)?,
@@ -88,13 +93,13 @@ fn sql_query_song(connection: &Connection, id: i32) -> Result<(), rusqlite::Erro
             duration: r.get(4)?,
             date_added: r.get(5)?,
             clicks: r.get(6)?,
-            playlists: Vec::new(),
+            playlists: vec![r.get(7)?],
         })
     })?;
 
     for row in playlist_iter{
-        println!("playlist retrieved with id of [{}]: {:?}", id, row?);
+        revec.push(row?);
     };
 
-    return Ok(())
+    return Ok(revec)
 }

@@ -1,6 +1,5 @@
 use eframe::{run_native, NativeOptions, egui};
 use crate::gui::RstyJingle;
-use std::fs;
 
 mod gui;
 mod audio;

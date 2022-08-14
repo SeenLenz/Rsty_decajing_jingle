@@ -1,14 +1,19 @@
+use std::io::BufReader;
 use std::path::PathBuf;
+use std::time::SystemTime;
+use rodio::Source;
+use rodio::Decoder;
 use rusqlite::Connection;
 //std imports
 use std::{error::Error};
-use std::fs;
+use std::fs::{self, DirEntry, File};
 use rfd::FileDialog;
 //gui imports
 use eframe::{
     egui,
     App,
     egui::{TopBottomPanel, 
+        Vec2,
         SidePanel, 
         style::Visuals, 
         Layout, 
@@ -20,6 +25,7 @@ use eframe::{
 use std::fmt;
 use serde::{Deserialize, Serialize};
 use crate::opint::json_to_string;
+use crate::opint::parse_folder;
 use crate::sql;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -30,7 +36,7 @@ pub struct RstyConfig{
     is_simple: bool,
     pub has_run: bool,
     folders: Vec<PathBuf>
-}
+}use eframe::{run_native, NativeOptions, egui};
 
 impl RstyConfig{
 
@@ -66,11 +72,39 @@ pub struct Song {
     pub id: i32,
     pub img_path: String,
     pub path: String,
+    //pub extension: String,
     pub name: String,
-    pub duration: String,
+    pub duration: u64,
     pub date_added: String,
     pub clicks: i32,
-    pub playlists: Vec<i32>,
+    pub playlists: Vec<String>,
+}
+
+impl Song{
+    pub fn new_from_entry(entry: DirEntry) -> Result<Self, std::io::Error>{
+
+    println!("called Song::new_from_entry");
+        
+        
+        let thing: Song = Song{
+            id: 1,
+            img_path: "./resources/favourites.png".to_string(),
+            path: entry.path().into_os_string().into_string().unwrap(),
+            name: entry.file_name().into_string().unwrap(),
+            duration: match mp3_duration::from_path(entry.path()) {
+
+                Ok(x) => x.as_secs(),
+                Err(x) => 0
+
+            },
+            date_added: format!("{:?}",entry.metadata().unwrap().created().unwrap()),
+            clicks: 0,
+            playlists: Vec::new()};
+
+        println!("{:?}", thing);
+
+        return Ok(thing);
+    }
 }
 
 #[derive(Debug)]
@@ -92,7 +126,7 @@ pub struct RstyJingle{
 }
 
 impl RstyJingle{
-    pub fn new() -> Self{
+    pub fn new() -> RstyJingle{
 
         RstyJingle{
             songs: Vec::<Song>::new(),
@@ -119,13 +153,14 @@ impl App for RstyJingle{
             initgui(&mut self.cfg, ctx);
 
         } else {
-    
-            bottom_panel(ctx);
-    
-            side_panel(ctx);
-    
-            center_panel(ctx);
 
+            if self.cfg.is_simple {
+
+            } else {
+
+                complex_layout(ctx);
+
+            }
         }
     }
 
@@ -137,16 +172,33 @@ impl App for RstyJingle{
 
 }
 
+fn complex_layout(ctx: &egui::Context){
+
+    bottom_panel(ctx);
+    
+    side_panel(ctx);
+
+    center_panel(ctx);  
+
+}
+
+fn trial(ctx: &egui::Context){
+
+    CentralPanel::default().show(ctx, |ui|{
+
+        egui::Window::new("Kek").resize(|r| r.fixed_size(egui::Vec2::new(300., 300.))).show(ctx, |ui|{});
+
+    }); 
+
+}
+
 fn initgui(cfg: &mut RstyConfig, ctx: &egui::Context){
 
     CentralPanel::default().show(ctx, |ui|{
 
         egui::Window::new("First_time_conf")
-
         .resizable(false)
         .collapsible(false)
-        .default_width(500.)
-        .default_height(500.)
         .hscroll(false)
         .vscroll(false)
         .title_bar(false)
@@ -204,9 +256,9 @@ fn initgui(cfg: &mut RstyConfig, ctx: &egui::Context){
 
                     cfg.has_run = true;
 
-                    let connection = Connection::open("./database/rsty_jingle.db").expect("fucked up connection to the database");
+                    sql::sql_init().expect("init sql has failed");
 
-                    sql::sql_init(&connection).expect("init sql has failed");
+                    parse_folder(&cfg.folders);
 
                     match fs::read_dir("/home") {
                         Ok(_) => cfg.is_linux = true,
@@ -228,9 +280,13 @@ fn side_panel(ctx: &egui::Context){
         .min_width(250.0)
         .show(ctx,|ui|{
 
-            ui.label("Options/search");
-            let theme_changer = ui.add(egui::Button::new("🌙"));
-            let page_changer = ui.add(egui::Button::new("🎵"));
+            ui.horizontal(|ui|{
+                ui.add_space(10.);
+                let Settings= ui.add(egui::Button::new("Settings"));       
+            });
+
+            ui.separator();
+            
     });
 }
 
