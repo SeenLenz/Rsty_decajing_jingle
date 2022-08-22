@@ -1,6 +1,8 @@
 use std::io::BufReader;
+use std::option::Option;
 use std::path::PathBuf;
 use std::time::SystemTime;
+use eframe::egui::SelectableLabel;
 use rodio::Source;
 use rodio::Decoder;
 use rusqlite::Connection;
@@ -24,9 +26,9 @@ use eframe::{
 //json imports
 use std::fmt;
 use serde::{Deserialize, Serialize};
-use crate::opint::json_to_string;
-use crate::opint::parse_folder;
+use crate::opint::{parse_folder,json_to_string};
 use crate::sql;
+use crate::sql::sdb_to_vec;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RstyConfig{
@@ -80,7 +82,25 @@ pub struct Song {
     pub playlists: Vec<String>,
 }
 
+impl Default for Song{
+
+    fn default() -> Self {
+        return Song{id:-1,  
+            img_path:String::from(""), 
+            path: String::from(""), 
+            name: String::from(""), 
+            duration: 0, 
+            date_added: String::from(""), 
+            clicks: 0, 
+            playlists: Vec::new()
+        };
+
+}
+
+}
+
 impl Song{
+
     pub fn new_from_entry(entry: DirEntry) -> Result<Self, std::io::Error>{
 
     println!("called Song::new_from_entry");
@@ -121,17 +141,19 @@ pub struct Playlist<'a> {
 
 #[derive(Debug)]
 pub struct RstyJingle{
-    songs: Vec<Song>,
-    cfg: RstyConfig,
+    pub songs: Vec<Song>,
+    pub cfg: RstyConfig,
+    pub focus: Option<&'static Song>,
 }
 
 impl RstyJingle{
-    pub fn new() -> RstyJingle{
+    pub fn new() -> Self{
 
         RstyJingle{
             songs: Vec::<Song>::new(),
             //TODO: error_handling
-            cfg: RstyConfig::new().unwrap()
+            cfg: RstyConfig::new().unwrap(),
+            focus: None,
         }
     }
 
@@ -150,7 +172,7 @@ impl App for RstyJingle{
 
         if self.cfg.has_run == false {
 
-            initgui(&mut self.cfg, ctx);
+            initgui(&mut self.cfg, ctx, &mut self.songs);
 
         } else {
 
@@ -158,7 +180,13 @@ impl App for RstyJingle{
 
             } else {
 
-                complex_layout(ctx);
+                if self.songs.len() == 0{
+
+                    sdb_to_vec(&mut self.songs).expect("SDB_TO_VEC failed normal startup");
+
+                }
+
+                complex_layout(ctx, &mut self.songs, &mut self.focus);
 
             }
         }
@@ -172,13 +200,13 @@ impl App for RstyJingle{
 
 }
 
-fn complex_layout(ctx: &egui::Context){
+fn complex_layout(ctx: &egui::Context, songs: &mut Vec<Song>, focus: &mut Option<&'static Song>){
 
-    bottom_panel(ctx);
+    bottom_panel(ctx, focus);
     
     side_panel(ctx);
 
-    center_panel(ctx);  
+    center_panel(ctx, songs, focus);  
 
 }
 
@@ -192,7 +220,7 @@ fn trial(ctx: &egui::Context){
 
 }
 
-fn initgui(cfg: &mut RstyConfig, ctx: &egui::Context){
+fn initgui(cfg: &mut RstyConfig, ctx: &egui::Context, songs: &mut Vec<Song>){
 
     CentralPanel::default().show(ctx, |ui|{
 
@@ -267,6 +295,8 @@ fn initgui(cfg: &mut RstyConfig, ctx: &egui::Context){
 
                     cfg.save().expect("saving Rsty config has failed");
 
+                    sdb_to_vec(songs).expect("SDB_TO_VEC failed at startup");
+
                 }
             });
         });
@@ -290,29 +320,89 @@ fn side_panel(ctx: &egui::Context){
     });
 }
 
-fn bottom_panel(ctx: &egui::Context){
+fn bottom_panel(ctx: &egui::Context, focus: &mut Option<&'static Song>){
     
     TopBottomPanel::bottom("navbar")
     .min_height(100.0)
     .show(ctx, |ui| {
 
-        ui.label("Player");
+        // ui.with_layout(Layout::bottom_up(Align::Center), |ui|{
+        //     ui.add_space(15.0);
+        //     ui.add(egui::ProgressBar::new(0.).desired_width(ui.available_width() / 2.));
+        //     ui.add_space(15.0);
+        
+        //     ui.horizontal(|ui|{
+
+        //         let previous = ui.add(egui::Button::new("⏮"));
+        //         let play = ui.add(egui::Button::new("▶"));
+        //         let next = ui.add(egui::Button::new("⏭"));
+
+        //     });
+        // });
+
         ui.with_layout(Layout::bottom_up(Align::Center), |ui|{
-            ui.add_space(15.0);
-            ui.add(egui::ProgressBar::new(120.0).desired_width(ui.available_width() / 2.))
+                
+                ui.add_space(15.0);
+                ui.add(egui::ProgressBar::new(0.).desired_width(ui.available_width() / 2.));
+                ui.add_space(15.0);
+                match focus {
+                    Some(x) => {
+                        ui.label(&x.name);
+                    }
+                    None => {}
+                }
+
+            ui.allocate_ui_with_layout(egui::vec2(100., 100.), Layout::bottom_up(Align::Center), |ui|{
+            
+                ui.horizontal(|ui|{
+
+                    let previous = ui.add(egui::Button::new("⏮"));
+                    let play = ui.add(egui::Button::new("▶"));
+                    let next = ui.add(egui::Button::new("⏭"));
+
+                });
+            });
         });
     });
-    
 }
-
-fn center_panel(ctx: &egui::Context){
+ 
+fn center_panel<'a>(ctx: &egui::Context, songs: &'a mut Vec<Song>, mut focus: &mut Option<&Song>){
 
     CentralPanel::default().show(ctx, |ui|{
 
-        ui.label("something else");
-        
+        egui::ScrollArea::vertical().show(ui, |ui| {
+
+            egui::Grid::new("some_unique_id").striped(true).show(ui, |ui| {
+
+                for song in songs{
+
+                    ui.vertical(|ui|{
+                        ui.add_space(20.);
+                        ui.horizontal(|ui|{
+
+                            ui.add_space(5.);
+                            if ui.link(&song.name).clicked() {
+
+                                match focus {
+                                    Some(x) => {
+                                        x = song;
+                                    }
+                                    None => {}
+                                }
+                            }
+                        });
+                        ui.add_space(20.);
+                    });
+                    ui.end_row();             
+
+                }
+
+            });
+            
+        });
+
     }); 
-    
+
 }
 
 fn main_page(ctx: &egui::Context){

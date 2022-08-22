@@ -1,11 +1,12 @@
 use rusqlite::{Connection, Result, params};
 use rusqlite::NO_PARAMS;
-use crate::gui::Song;
+use crate::gui::{Song, RstyJingle};
 use crate::gui::Playlist;
 
 pub fn sql_init() -> Result<()> {
 
-    let connection = Connection::open("./database/rsty_jingle.db").expect("fucked up connection to the database when initilaizing it");
+    let connection = Connection::open("./database/rsty_jingle.db")
+    .expect("fucked up connection to the database when initilaizing it");
 
     connection.execute("
     CREATE TABLE IF NOT EXISTS playlists (
@@ -39,7 +40,8 @@ pub fn sql_add_song(song: Song) -> Result<()> {
     println!("called sql_add_song");
 
     //https://stackoverflow.com/questions/57791985/how-to-append-to-existing-text-row-sqlite3
-    let connection = Connection::open("./database/rsty_jingle.db").expect("fucked up connection to the database when adding a song");
+    let connection = Connection::open("./database/rsty_jingle.db")
+    .expect("fucked up connection to the database when adding a song");
     connection.execute( "INSERT INTO songs VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)",
     params![
 song.img_path, 
@@ -79,27 +81,28 @@ fn sql_query_playlist(connection: &Connection, id: i32) -> Result<(), rusqlite::
     return Ok(())
 }
 
-pub fn sql_query_song() -> Result<Vec<Song>, rusqlite::Error> {
+pub fn sdb_to_vec(target_vec: &mut Vec<Song>) -> Result<bool, rusqlite::Error> {
 
-    let connection = Connection::open("./database/rsty_jingle.db").expect("fucked up connection to the database when adding a song");
+    let connection = Connection::open("./database/rsty_jingle.db")
+    .expect("fucked up connection to the database when adding a song");
     let mut revec = Vec::new();
-    let mut stmt = connection.prepare("SELECT rowid,  * FROM songs WHERE id = ?1")?;
+    let mut stmt = connection.prepare("SELECT rowid,  * FROM songs")?;
     let playlist_iter = stmt.query_map([], |r|{
-        Ok( Song {
+        Ok( target_vec.push(Song {
             id: r.get(0)?,
-            path: r.get(1)?,
-            img_path: r.get(2)?,
+            img_path: r.get(1)?,
+            path: r.get(2)?,
             name: r.get(3)?,
             duration: r.get(4)?,
             date_added: r.get(5)?,
             clicks: r.get(6)?,
             playlists: vec![r.get(7)?],
-        })
+        }))
     })?;
 
     for row in playlist_iter{
         revec.push(row?);
     };
 
-    return Ok(revec)
+    return Ok(true)
 }
