@@ -13,7 +13,9 @@ rodio = "0.15.0"
 mp3-duration = "0.1.10"
 
 #used for the gui
-eframe = "0.18.0"
+eframe = "0.19.0"
+
+egui = "0.19.0"
 
 #used for egui_extras::retained_image
 egui_extras = {path = "/home/lenz/.cargo/registry/src/github.com-1ecc6299db9ec823/egui_extras-0.18.0", features = ["image"] }

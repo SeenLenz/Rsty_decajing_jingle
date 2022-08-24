@@ -29,11 +29,13 @@ use serde::{Deserialize, Serialize};
 use crate::opint::{parse_folder,json_to_string};
 use crate::sql;
 use crate::sql::sdb_to_vec;
+use crate::audio::play;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RstyConfig{
+
+    settings_page: bool,
     dark_mode: bool,
-    main_page: bool,
     is_linux: bool,
     is_simple: bool,
     pub has_run: bool,
@@ -60,14 +62,14 @@ impl RstyConfig{
     }
 }
 
-impl std::fmt::Display for RstyConfig{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "
-        \ndark_mode: {}\nmain_page: {}", 
-        self.dark_mode, 
-        self.main_page)
-    }
-}
+// impl std::fmt::Display for RstyConfig{
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         write!(f, "
+//         \ndark_mode: {}\nmain_page: {}", 
+//         self.dark_mode, 
+//         self.main_page)
+//     }
+// }
 
 #[derive(Debug)]
 pub struct Song {
@@ -141,15 +143,18 @@ pub struct Playlist<'a> {
 
 #[derive(Debug)]
 pub struct RstyJingle{
+    pub repaint_after: f32,
     pub songs: Vec<Song>,
+    // pub playlists: Vec<Playlist>,
     pub cfg: RstyConfig,
-    pub focus: Option<&'static Song>,
+    pub focus: Option<usize>,
 }
 
 impl RstyJingle{
     pub fn new() -> Self{
 
         RstyJingle{
+            repaint_after: 1.0,
             songs: Vec::<Song>::new(),
             //TODO: error_handling
             cfg: RstyConfig::new().unwrap(),
@@ -158,11 +163,19 @@ impl RstyJingle{
     }
 
     pub fn refresh(self){}
+
+    pub fn set_focus(mut self, index: usize){
+
+        self.focus = Some(index);
+
+    }
     
 }
 
 impl App for RstyJingle{
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+
+
 
         if self.cfg.dark_mode {
             ctx.set_visuals(Visuals::dark());
@@ -181,32 +194,32 @@ impl App for RstyJingle{
             } else {
 
                 if self.songs.len() == 0{
-
                     sdb_to_vec(&mut self.songs).expect("SDB_TO_VEC failed normal startup");
-
                 }
 
-                complex_layout(ctx, &mut self.songs, &mut self.focus);
+                complex_layout(ctx, &mut self.songs, &mut self.focus, &mut self.cfg);
 
             }
         }
     }
 
-    fn on_exit_event(&mut self) -> bool {
-        true
-    }
 
-    fn on_exit(&mut self, _gl: &eframe::glow::Context) {}
 
 }
 
-fn complex_layout(ctx: &egui::Context, songs: &mut Vec<Song>, focus: &mut Option<&'static Song>){
+fn complex_layout(ctx: &egui::Context, songs: &mut Vec<Song>, focus: &mut Option<usize>, cfg: &mut RstyConfig){
 
-    bottom_panel(ctx, focus);
+    bottom_panel(ctx, focus, songs);
     
-    side_panel(ctx);
+    side_panel(ctx, cfg);
 
-    center_panel(ctx, songs, focus);  
+    if cfg.settings_page {
+        settings_page(ctx)
+    } else{
+
+        center_panel(ctx, songs, focus);
+
+    }
 
 }
 
@@ -303,7 +316,8 @@ fn initgui(cfg: &mut RstyConfig, ctx: &egui::Context, songs: &mut Vec<Song>){
     }); 
 }
 
-fn side_panel(ctx: &egui::Context){
+fn side_panel(ctx: &egui::Context, cfg: &mut RstyConfig){
+
 
     SidePanel::left("Options")
         .resizable(false)
@@ -312,7 +326,10 @@ fn side_panel(ctx: &egui::Context){
 
             ui.horizontal(|ui|{
                 ui.add_space(10.);
-                let Settings= ui.add(egui::Button::new("Settings"));       
+                let Settings= ui.add(egui::Button::new("Settings"));    
+                if Settings.clicked(){
+                    cfg.settings_page = !cfg.settings_page
+                }   
             });
 
             ui.separator();
@@ -320,7 +337,7 @@ fn side_panel(ctx: &egui::Context){
     });
 }
 
-fn bottom_panel(ctx: &egui::Context, focus: &mut Option<&'static Song>){
+fn bottom_panel(ctx: &egui::Context, focus: &mut Option<usize>, songs: & mut Vec<Song>){
     
     TopBottomPanel::bottom("navbar")
     .min_height(100.0)
@@ -344,13 +361,16 @@ fn bottom_panel(ctx: &egui::Context, focus: &mut Option<&'static Song>){
                 
                 ui.add_space(15.0);
                 ui.add(egui::ProgressBar::new(0.).desired_width(ui.available_width() / 2.));
-                ui.add_space(15.0);
+                ui.add_space(10.0);
                 match focus {
                     Some(x) => {
-                        ui.label(&x.name);
+                        ui.label(&songs[focus.unwrap()].name);
                     }
-                    None => {}
+                    None => {
+                        ui.label("No song currently playing");
+                    }
                 }
+                ui.add_space(8.0);
 
             ui.allocate_ui_with_layout(egui::vec2(100., 100.), Layout::bottom_up(Align::Center), |ui|{
             
@@ -366,7 +386,7 @@ fn bottom_panel(ctx: &egui::Context, focus: &mut Option<&'static Song>){
     });
 }
  
-fn center_panel<'a>(ctx: &egui::Context, songs: &'a mut Vec<Song>, mut focus: &mut Option<&Song>){
+fn center_panel(ctx: &egui::Context, songs: & mut Vec<Song>, focus: &mut Option<usize>){
 
     CentralPanel::default().show(ctx, |ui|{
 
@@ -374,21 +394,28 @@ fn center_panel<'a>(ctx: &egui::Context, songs: &'a mut Vec<Song>, mut focus: &m
 
             egui::Grid::new("some_unique_id").striped(true).show(ui, |ui| {
 
-                for song in songs{
+
+                for song in 0..songs.len(){
 
                     ui.vertical(|ui|{
                         ui.add_space(20.);
                         ui.horizontal(|ui|{
 
                             ui.add_space(5.);
-                            if ui.link(&song.name).clicked() {
+                            if ui.link(&songs[song].name).clicked() {
+                                println!("current index: {:?}", focus);
+                                println!("current song: {}", &songs[song].name);
+                                println!("Song id: {}", &songs[song].id);
 
-                                match focus {
-                                    Some(x) => {
-                                        x = song;
-                                    }
-                                    None => {}
+                                if *focus == Some(song){
+                                    *focus = None
+                                } else{
+                                    *focus = Some(song);
                                 }
+
+                                println!("new index: {:?}", focus);
+                                println!("new song: {}", &songs[song].name);
+                                
                             }
                         });
                         ui.add_space(20.);
@@ -405,12 +432,10 @@ fn center_panel<'a>(ctx: &egui::Context, songs: &'a mut Vec<Song>, mut focus: &m
 
 }
 
-fn main_page(ctx: &egui::Context){
-
-    
-}
-
 fn settings_page(ctx: &egui::Context){
 
     
 }
+
+
+
