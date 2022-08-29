@@ -160,7 +160,7 @@ impl App for RstyJingle {
         }
 
         if self.cfg.has_run == false {
-            initgui(&mut self.cfg, ctx, &mut self.songs);
+            initgui(ctx, self);
         } else {
             if self.cfg.is_simple {
             } else {
@@ -168,26 +168,21 @@ impl App for RstyJingle {
                     sdb_to_vec(&mut self.songs).expect("SDB_TO_VEC failed normal startup");
                 }
 
-                complex_layout(ctx, &mut self.songs, &mut self.focus, &mut self.cfg);
+                complex_layout(ctx, self);
             }
         }
     }
 }
 
-fn complex_layout(
-    ctx: &egui::Context,
-    songs: &mut Vec<Song>,
-    focus: &mut Option<usize>,
-    cfg: &mut RstyConfig,
-) {
-    bottom_panel(ctx, focus, songs);
+fn complex_layout(ctx: &egui::Context, rsty: &mut RstyJingle) {
+    bottom_panel(ctx, rsty);
 
-    side_panel(ctx, cfg);
+    side_panel(ctx, rsty);
 
-    if cfg.settings_page {
+    if rsty.cfg.settings_page {
         settings_page(ctx)
     } else {
-        center_panel(ctx, songs, focus);
+        center_panel(ctx, rsty);
     }
 }
 
@@ -199,7 +194,7 @@ fn trial(ctx: &egui::Context) {
     });
 }
 
-fn initgui(cfg: &mut RstyConfig, ctx: &egui::Context, songs: &mut Vec<Song>) {
+fn initgui(ctx: &egui::Context, rsty: &mut RstyJingle) {
     CentralPanel::default().show(ctx, |ui| {
         egui::Window::new("First_time_conf")
             .resizable(false)
@@ -221,23 +216,23 @@ fn initgui(cfg: &mut RstyConfig, ctx: &egui::Context, songs: &mut Vec<Song>) {
                     .spacing([0., 30.])
                     .show(ui, |ui| {
                         ui.label("Darkmode:");
-                        let theme = ui.add(egui::Button::new(format!("{}", cfg.dark_mode)));
+                        let theme = ui.add(egui::Button::new(format!("{}", rsty.cfg.dark_mode)));
                         if theme.clicked() {
-                            cfg.dark_mode = !cfg.dark_mode;
+                            rsty.cfg.dark_mode = !rsty.cfg.dark_mode;
                         }
                         ui.end_row();
 
                         ui.label("Simple Layout:");
-                        let layout = ui.add(egui::Button::new(format!("{}", cfg.is_simple)));
+                        let layout = ui.add(egui::Button::new(format!("{}", rsty.cfg.is_simple)));
                         if layout.clicked() {
-                            cfg.is_simple = !cfg.is_simple;
+                            rsty.cfg.is_simple = !rsty.cfg.is_simple;
                         }
                         ui.end_row();
 
                         ui.label("Folders");
                         let add_folder_button = ui.add(egui::Button::new("Add Folder"));
                         if add_folder_button.clicked() {
-                            cfg.folders.push(
+                            rsty.cfg.folders.push(
                                 FileDialog::new()
                                     .pick_folder()
                                     .expect("Uhf, you fucked up here buddy"),
@@ -247,7 +242,7 @@ fn initgui(cfg: &mut RstyConfig, ctx: &egui::Context, songs: &mut Vec<Song>) {
                         ui.end_row();
                     });
 
-                for folder in &cfg.folders {
+                for folder in &rsty.cfg.folders {
                     ui.label(format!("{}", folder.as_path().display().to_string()));
                 }
 
@@ -255,27 +250,27 @@ fn initgui(cfg: &mut RstyConfig, ctx: &egui::Context, songs: &mut Vec<Song>) {
                 ui.horizontal(|ui| {
                     ui.add_space(50.);
                     if ui.add(egui::Button::new("Submit")).clicked() {
-                        cfg.has_run = true;
+                        rsty.cfg.has_run = true;
 
                         sql::sql_init().expect("init sql has failed");
 
-                        parse_folder(&cfg.folders);
+                        parse_folder(&rsty.cfg.folders);
 
                         match fs::read_dir("/home") {
-                            Ok(_) => cfg.is_linux = true,
-                            Err(_) => cfg.is_linux = false,
+                            Ok(_) => rsty.cfg.is_linux = true,
+                            Err(_) => rsty.cfg.is_linux = false,
                         }
 
-                        cfg.save().expect("saving Rsty config has failed");
+                        rsty.cfg.save().expect("saving Rsty config has failed");
 
-                        sdb_to_vec(songs).expect("SDB_TO_VEC failed at startup");
+                        sdb_to_vec(&mut rsty.songs).expect("SDB_TO_VEC failed at startup");
                     }
                 });
             });
     });
 }
 
-fn side_panel(ctx: &egui::Context, cfg: &mut RstyConfig) {
+fn side_panel(ctx: &egui::Context, rsty: &mut RstyJingle) {
     SidePanel::left("Options")
         .resizable(false)
         .min_width(250.0)
@@ -284,7 +279,7 @@ fn side_panel(ctx: &egui::Context, cfg: &mut RstyConfig) {
                 ui.add_space(10.);
                 let Settings = ui.add(egui::Button::new("Settings"));
                 if Settings.clicked() {
-                    cfg.settings_page = !cfg.settings_page
+                    rsty.cfg.settings_page = !rsty.cfg.settings_page
                 }
             });
 
@@ -292,7 +287,7 @@ fn side_panel(ctx: &egui::Context, cfg: &mut RstyConfig) {
         });
 }
 
-fn bottom_panel(ctx: &egui::Context, focus: &mut Option<usize>, songs: &mut Vec<Song>) {
+fn bottom_panel(ctx: &egui::Context, rsty: &mut RstyJingle) {
     TopBottomPanel::bottom("navbar")
         .min_height(100.0)
         .show(ctx, |ui| {
@@ -314,9 +309,9 @@ fn bottom_panel(ctx: &egui::Context, focus: &mut Option<usize>, songs: &mut Vec<
                 ui.add_space(15.0);
                 ui.add(egui::ProgressBar::new(0.).desired_width(ui.available_width() / 2.));
                 ui.add_space(10.0);
-                match focus {
+                match rsty.focus {
                     Some(x) => {
-                        ui.label(&songs[focus.unwrap()].name);
+                        ui.label(&rsty.songs[rsty.focus.unwrap()].name);
                     }
                     None => {
                         ui.label("No song currently playing");
@@ -339,30 +334,30 @@ fn bottom_panel(ctx: &egui::Context, focus: &mut Option<usize>, songs: &mut Vec<
         });
 }
 
-fn center_panel(ctx: &egui::Context, songs: &mut Vec<Song>, focus: &mut Option<usize>) {
+fn center_panel(ctx: &egui::Context, rsty: &mut RstyJingle) {
     CentralPanel::default().show(ctx, |ui| {
         egui::ScrollArea::vertical().show(ui, |ui| {
             egui::Grid::new("some_unique_id")
                 .striped(true)
                 .show(ui, |ui| {
-                    for song in 0..songs.len() {
+                    for song in 0..rsty.songs.len() {
                         ui.vertical(|ui| {
                             ui.add_space(20.);
                             ui.horizontal(|ui| {
                                 ui.add_space(5.);
-                                if ui.link(&songs[song].name).clicked() {
-                                    println!("current index: {:?}", focus);
-                                    println!("current song: {}", &songs[song].name);
-                                    println!("Song id: {}", &songs[song].id);
+                                if ui.link(&rsty.songs[song].name).clicked() {
+                                    println!("current index: {:?}", rsty.focus);
+                                    println!("current song: {}", &rsty.songs[song].name);
+                                    println!("Song id: {}", &rsty.songs[song].id);
 
-                                    if *focus == Some(song) {
-                                        *focus = None
+                                    if rsty.focus == Some(song) {
+                                        rsty.focus = None
                                     } else {
-                                        *focus = Some(song);
+                                        rsty.focus = Some(song);
                                     }
 
-                                    println!("new index: {:?}", focus);
-                                    println!("new song: {}", &songs[song].name);
+                                    println!("new index: {:?}", rsty.focus);
+                                    println!("new song: {}", &rsty.songs[song].name);
                                 }
                             });
                             ui.add_space(20.);
