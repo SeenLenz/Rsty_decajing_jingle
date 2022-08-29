@@ -1,14 +1,14 @@
-use std::io;
-use std::mem::drop;
-use std::io::Write;
 use std::fs::ReadDir;
+use std::io;
+use std::io::Write;
+use std::mem::drop;
 
+use rodio::{Decoder, OutputStream, Sink};
 use std::fs::File;
 use std::io::BufReader;
-use rodio::{Decoder, OutputStream, Sink};
 
-mod file_handling;
 mod audio_handling;
+mod file_handling;
 
 fn main() -> io::Result<()> {
     let mut folders: Vec<ReadDir> = Vec::new();
@@ -27,7 +27,7 @@ fn main() -> io::Result<()> {
                 drop(input);
                 continue;
             }
-            _   => {
+            _ => {
                 println!("Invalid input");
                 drop(input);
                 continue;
@@ -39,13 +39,14 @@ fn main() -> io::Result<()> {
 
     let song = &songs[534]._path;
 
-    let (_stream, stream_handle) = OutputStream::try_default().expect("Failed to get default output device");
+    let (_stream, stream_handle) =
+        OutputStream::try_default().expect("Failed to get default output device");
     let sink = Sink::try_new(&stream_handle).expect("Failed to create sink");
 
     let file = BufReader::new(File::open(song).expect("Failed to open file"));
 
     let source = Decoder::new(file).expect("Failed to create a decoder");
-    
+
     sink.append(source);
 
     sink.sleep_until_end();
