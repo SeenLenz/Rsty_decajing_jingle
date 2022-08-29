@@ -1,7 +1,6 @@
 {
     "settings_page": false,
     "dark_mode": true,
-    "main_page": true,
     "is_linux": true,
     "is_simple": false,
     "has_run": true,

@@ -26,12 +26,25 @@ use std::fmt;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RstyConfig {
-    settings_page: bool,
-    dark_mode: bool,
-    is_linux: bool,
-    is_simple: bool,
+    pub settings_page: bool,
+    pub dark_mode: bool,
+    pub is_linux: bool,
+    pub is_simple: bool,
     pub has_run: bool,
-    folders: Vec<PathBuf>,
+    pub folders: Vec<PathBuf>,
+}
+
+impl Default for RstyConfig {
+    fn default() -> Self {
+        RstyConfig {
+            settings_page: false,
+            dark_mode: true,
+            is_linux: false,
+            is_simple: false,
+            has_run: false,
+            folders: Vec::new(),
+        }
+    }
 }
 
 impl RstyConfig {
