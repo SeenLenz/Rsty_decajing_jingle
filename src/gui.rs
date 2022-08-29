@@ -1,16 +1,17 @@
+use rodio::{source::Source, Decoder, OutputStream};
+use std::fs::File;
+use std::io::BufReader;
+
 use eframe::egui::SelectableLabel;
 use egui::style::DebugOptions;
-use rodio::Decoder;
-use rodio::Source;
 use rusqlite::Connection;
-use std::io::BufReader;
 use std::option::Option;
 use std::path::PathBuf;
 use std::time::SystemTime;
 //std imports
 use rfd::FileDialog;
 use std::error::Error;
-use std::fs::{self, DirEntry, File};
+use std::fs::{self, DirEntry};
 //gui imports
 use eframe::{
     egui,
@@ -126,6 +127,14 @@ impl Song {
         println!("{:?}", thing);
 
         return Ok(thing);
+    }
+
+    pub fn play_shitty(&mut self) {
+        let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+        let file = BufReader::new(File::open(&self.path).unwrap());
+        let source = Decoder::new(file).unwrap();
+        stream_handle.play_raw(source.convert_samples());
+        std::thread::sleep(std::time::Duration::from_secs(69));
     }
 }
 
@@ -361,6 +370,18 @@ fn bottom_panel(ctx: &egui::Context, rsty: &mut RstyJingle) {
                             let previous = ui.add(egui::Button::new("⏮"));
                             let play = ui.add(egui::Button::new("▶"));
                             let next = ui.add(egui::Button::new("⏭"));
+
+                            if previous.clicked() {
+                                rsty.focus = Some(rsty.focus.unwrap() - 1)
+                            }
+
+                            if play.clicked() {
+                                rsty.songs[rsty.focus.unwrap()].play_shitty();
+                            }
+
+                            if next.clicked() {
+                                rsty.focus = Some(rsty.focus.unwrap() + 1)
+                            }
                         });
                     },
                 );
