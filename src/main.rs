@@ -44,6 +44,7 @@ fn main() {
 
     let win_options: NativeOptions = NativeOptions {
         initial_window_size: Some(egui::vec2(960.0, 960.0)),
+        min_window_size: Some(egui::vec2(960.0, 960.0)),
         ..Default::default()
     };
     run_native(

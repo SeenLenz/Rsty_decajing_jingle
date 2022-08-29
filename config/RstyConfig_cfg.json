@@ -1,10 +1,1 @@
-{
-    "settings_page": false,
-    "dark_mode": true,
-    "is_linux": true,
-    "is_simple": false,
-    "has_run": true,
-    "folders": [
-        "/home/lenz/Documents/Rsty_decajing_jingle/Audio"
-    ]
-}
+{"debug":false,"settings_page":false,"dark_mode":true,"is_linux":false,"is_simple":false,"has_run":true,"folders":[]}

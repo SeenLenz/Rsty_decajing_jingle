@@ -1,4 +1,5 @@
 use eframe::egui::SelectableLabel;
+use egui::style::DebugOptions;
 use rodio::Decoder;
 use rodio::Source;
 use rusqlite::Connection;
@@ -26,6 +27,7 @@ use std::fmt;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RstyConfig {
+    pub debug: bool,
     pub settings_page: bool,
     pub dark_mode: bool,
     pub is_linux: bool,
@@ -37,6 +39,7 @@ pub struct RstyConfig {
 impl Default for RstyConfig {
     fn default() -> Self {
         RstyConfig {
+            debug: false,
             settings_page: false,
             dark_mode: true,
             is_linux: false,
@@ -166,6 +169,24 @@ impl RstyJingle {
 
 impl App for RstyJingle {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        if self.cfg.debug {
+            ctx.set_debug_on_hover(true);
+        } else {
+            ctx.set_debug_on_hover(false);
+        }
+
+        // let thing = DebugOptions {
+        //     debug_on_hover: true,
+        //     show_expand_width: true,
+        //     show_expand_height: true,
+        //     show_resize: true,
+        // };
+
+        // ctx.set_style(egui::style::Style {
+        //     debug: thing,
+        //     ..Default::default()
+        // });
+
         if self.cfg.dark_mode {
             ctx.set_visuals(Visuals::dark());
         } else {
@@ -193,7 +214,7 @@ fn complex_layout(ctx: &egui::Context, rsty: &mut RstyJingle) {
     side_panel(ctx, rsty);
 
     if rsty.cfg.settings_page {
-        settings_page(ctx)
+        settings_page(ctx, rsty);
     } else {
         center_panel(ctx, rsty);
     }
@@ -351,6 +372,7 @@ fn center_panel(ctx: &egui::Context, rsty: &mut RstyJingle) {
     CentralPanel::default().show(ctx, |ui| {
         egui::ScrollArea::vertical().show(ui, |ui| {
             egui::Grid::new("some_unique_id")
+                .min_col_width(ui.available_width())
                 .striped(true)
                 .show(ui, |ui| {
                     for song in 0..rsty.songs.len() {
@@ -375,11 +397,35 @@ fn center_panel(ctx: &egui::Context, rsty: &mut RstyJingle) {
                             });
                             ui.add_space(20.);
                         });
+
                         ui.end_row();
                     }
                 });
+            ui.allocate_space(Vec2 {
+                x: ui.available_width(),
+                y: 0.,
+            });
         });
     });
 }
 
-fn settings_page(ctx: &egui::Context) {}
+fn settings_page(ctx: &egui::Context, rsty: &mut RstyJingle) {
+    egui::CentralPanel::default().show(ctx, |ui| {
+        egui::Grid::new("Options_grid")
+            .striped(true)
+            .show(ui, |ui| {
+                ui.vertical(|ui|{
+                ui.add_space(20.);
+                ui.horizontal(|ui|{
+                ui.label("Debug:");
+                if ui.button(format!("{}", rsty.cfg.debug)).clicked() {
+                    rsty.cfg.debug = !rsty.cfg.debug;
+                };
+                ui.label("This Option allows you to toggle the Debug view, that can be helpful for developers");
+                });
+                ui.add_space(20.);
+                });
+                ui.end_row();
+            });
+    });
+}
