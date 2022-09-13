@@ -1,3 +1,6 @@
+//Rules:
+//The ID of every egui element needs to be descriptive and start with the function its called from
+
 use rodio::{source::Source, Decoder, OutputStream};
 use std::fs::File;
 use std::io::BufReader;
@@ -231,7 +234,7 @@ fn complex_layout(ctx: &egui::Context, rsty: &mut RstyJingle) {
 
 fn trial(ctx: &egui::Context) {
     CentralPanel::default().show(ctx, |ui| {
-        egui::Window::new("Kek")
+        egui::Window::new("trial_Window_CenterOptionsTrialWindow")
             .resize(|r| r.fixed_size(egui::Vec2::new(300., 300.)))
             .show(ctx, |ui| {});
     });
@@ -239,7 +242,7 @@ fn trial(ctx: &egui::Context) {
 
 fn initgui(ctx: &egui::Context, rsty: &mut RstyJingle) {
     CentralPanel::default().show(ctx, |ui| {
-        egui::Window::new("First_time_conf")
+        egui::Window::new("initgui_Window_CenterOptions")
             .resizable(false)
             .collapsible(false)
             .hscroll(false)
@@ -253,7 +256,7 @@ fn initgui(ctx: &egui::Context, rsty: &mut RstyJingle) {
 
                 ui.add_space(30.);
 
-                egui::Grid::new("First_time_conf_table")
+                egui::Grid::new("initgui_grid")
                     .num_columns(2)
                     .striped(true)
                     .spacing([0., 30.])
@@ -314,13 +317,13 @@ fn initgui(ctx: &egui::Context, rsty: &mut RstyJingle) {
 }
 
 fn side_panel(ctx: &egui::Context, rsty: &mut RstyJingle) {
-    SidePanel::left("Options")
+    SidePanel::left("side_panel_SidePanel_Options")
         .resizable(false)
         .min_width(250.0)
         .show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.add_space(10.);
-                let Settings = ui.add(egui::Button::new("Settings"));
+                let Settings = ui.add(egui::Button::new("side_panel_Button_Settings"));
                 if Settings.clicked() {
                     rsty.cfg.settings_page = !rsty.cfg.settings_page
                 }
@@ -331,7 +334,7 @@ fn side_panel(ctx: &egui::Context, rsty: &mut RstyJingle) {
 }
 
 fn bottom_panel(ctx: &egui::Context, rsty: &mut RstyJingle) {
-    TopBottomPanel::bottom("navbar")
+    TopBottomPanel::bottom("bottom_panel_TopBottomPanel")
         .min_height(100.0)
         .show(ctx, |ui| {
             // ui.with_layout(Layout::bottom_up(Align::Center), |ui|{
@@ -392,7 +395,7 @@ fn bottom_panel(ctx: &egui::Context, rsty: &mut RstyJingle) {
 fn center_panel(ctx: &egui::Context, rsty: &mut RstyJingle) {
     CentralPanel::default().show(ctx, |ui| {
         egui::ScrollArea::vertical().show(ui, |ui| {
-            egui::Grid::new("some_unique_id")
+            egui::Grid::new("center_panel_Grid_MainSongsGrid")
                 .min_col_width(ui.available_width())
                 .striped(true)
                 .show(ui, |ui| {
@@ -432,7 +435,7 @@ fn center_panel(ctx: &egui::Context, rsty: &mut RstyJingle) {
 
 fn settings_page(ctx: &egui::Context, rsty: &mut RstyJingle) {
     egui::CentralPanel::default().show(ctx, |ui| {
-        egui::Grid::new("Options_grid")
+        egui::Grid::new("settings_page_Grid_SettingsGrid")
             .striped(true)
             .show(ui, |ui| {
                 ui.vertical(|ui|{
