@@ -299,7 +299,7 @@ fn initgui(ctx: &egui::Context, rsty: &mut RstyJingle) {
 
                         parse_folder(&rsty.cfg.folders);
 
-                        match fs::read_dir("/home") {
+                        match fs::read_dir("/tmp") {
                             Ok(_) => rsty.cfg.is_linux = true,
                             Err(_) => rsty.cfg.is_linux = false,
                         }

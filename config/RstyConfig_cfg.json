@@ -1,1 +1,9 @@
-{"debug":false,"settings_page":false,"dark_mode":true,"is_linux":false,"is_simple":false,"has_run":true,"folders":[]}
+{
+    "debug": false,
+    "settings_page": false,
+    "dark_mode": true,
+    "is_linux": false,
+    "is_simple": false,
+    "has_run": true,
+    "folders": []
+}
